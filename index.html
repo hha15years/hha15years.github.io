@@ -45,7 +45,7 @@
   .page.half img { position: absolute; top: 0; width: 200%; height: 100%; }
   .page.half.left  img { left: 0; }
   .page.half.right img { left: -100%; }
-  /* Bìa mobile khi chỉ có title.jpg rộng 2 trang: thu vừa khung */
+  /* Dự phòng: mobile không có title_mobile.jpg → thu title_desktop.jpg vừa khung */
   .page.title-fit { background: var(--bg); display: flex; align-items: center; }
   .page.title-fit img { height: auto; object-fit: contain; }
 
@@ -97,25 +97,43 @@
   body.single #mbar { display: flex; }
   body.single .nav, body.single #info, body.single #fsBtn { display: none; }
 
-  /* ---- Loading ---- */
-  #loader {
+  /* ---- Màn mở đầu: bìa hiện dần, mờ ảo rồi nét (2 giây) ---- */
+  #intro {
     position: fixed; inset: 0; z-index: 20;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-    background: var(--bg); transition: opacity .4s;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, #3d352c 0%, var(--bg) 70%);
+    transition: opacity .6s ease;
   }
-  #loader h1 { font-weight: 500; font-size: clamp(18px, 3vw, 28px); color: var(--accent); text-align: center; padding: 0 20px; }
-  #progress { width: min(320px, 70vw); height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; overflow: hidden; }
-  #progress div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-  #loadText { font-size: 14px; opacity: .8; }
+  body.single #intro { padding-bottom: calc(var(--mbar) + env(safe-area-inset-bottom)); }
+  #introBox { position: relative; }
+  #introBox::before {                     /* quầng sáng vàng phía sau */
+    content: ""; position: absolute; inset: -12%;
+    background: radial-gradient(ellipse at center, rgba(217,178,111,.45) 0%, rgba(217,178,111,0) 65%);
+    opacity: 0; animation: glow 2s ease-out forwards;
+    pointer-events: none;
+  }
+  #introImg {
+    position: relative; display: block; width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; box-shadow: 0 24px 70px rgba(0,0,0,.55);
+  }
+  #introImg.play { animation: reveal 2s cubic-bezier(.25,.1,.25,1) forwards; }
+  @keyframes reveal {
+    0%   { opacity: 0;   filter: blur(28px) brightness(1.7) saturate(.4); transform: scale(1.07); }
+    35%  { opacity: .55; filter: blur(16px) brightness(1.45) saturate(.6); }
+    70%  { opacity: .9;  filter: blur(5px)  brightness(1.15) saturate(.85); transform: scale(1.015); }
+    100% { opacity: 1;   filter: blur(0)    brightness(1)    saturate(1);  transform: scale(1); }
+  }
+  @keyframes glow {
+    0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: .15; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #introImg.play { animation-duration: .3s; }
+  }
 </style>
 </head>
 <body>
 
-<div id="loader">
-  <h1>Thư thầy cô gửi Hội khóa</h1>
-  <div id="progress"><div></div></div>
-  <div id="loadText">Đang đếm số trang…</div>
-</div>
+<div id="intro"><div id="introBox"><img id="introImg" alt=""></div></div>
 
 <div id="stage"><div id="bookWrap"></div></div>
 
@@ -143,15 +161,16 @@
 /* ================= CẤU HÌNH — chỉ cần sửa ở đây ================= */
 const CONFIG = {
   folder: "img/",
-  title: "title.jpg",              // bìa rộng 2 trang (desktop)
-  titleMobile: "title-mobile.jpg", // tùy chọn: bìa khổ 1 trang cho mobile; không có thì dùng title.jpg thu nhỏ
+  titleDesktop: "title_desktop.jpg", // bìa rộng 2 trang (desktop)
+  titleMobile: "title_mobile.jpg",   // bìa khổ 1 trang (mobile)
   ext: "jpg",
-  prefix: "",                      // ví dụ "p-" nếu ảnh tên p-01.jpg
-  pad: 0,                          // 0 → 1.jpg ; 2 → 01.jpg
+  prefix: "",                        // ví dụ "p-" nếu ảnh tên p-01.jpg
+  pad: 0,                            // 0 → 1.jpg ; 2 → 01.jpg
   start: 1,
-  total: 0,                        // 0 = tự đếm ảnh trong img/
-  heightPct: 0.90,                 // desktop: trang cao 90% màn hình
-  mobileBreak: 768,                // rộng ≤ 768px hoặc màn dọc → 1 trang
+  total: 0,                          // 0 = tự đếm ảnh trong img/
+  heightPct: 0.90,                   // desktop: trang cao 90% màn hình
+  mobileBreak: 768,                  // rộng ≤ 768px hoặc màn dọc → 1 trang
+  introMs: 2000,                     // thời gian bìa hiện dần lúc mở trang
   preloadFirst: 4
 };
 /* ================================================================= */
@@ -159,13 +178,25 @@ const CONFIG = {
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 const wrap = $("bookWrap");
-const bar = $("progress").firstElementChild;
 const pageUrl = n => `${CONFIG.folder}${CONFIG.prefix}${String(CONFIG.start + n - 1).padStart(CONFIG.pad, "0")}.${CONFIG.ext}`;
-const titleSrc = CONFIG.folder + CONFIG.title;
+const desktopTitleSrc = CONFIG.folder + CONFIG.titleDesktop;
+const mobileTitleSrc0 = CONFIG.folder + CONFIG.titleMobile;
+const mbarH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mbar")) || 56;
+const isSingle = () => window.innerWidth <= CONFIG.mobileBreak || window.innerWidth < window.innerHeight;
 
+/* Kiểm tra ảnh có tồn tại không.
+   - Chạy trên web (http/https): hỏi nhanh bằng HEAD, không tải cả ảnh.
+   - Mở file trực tiếp (file://) hoặc server không hỗ trợ HEAD: tải thử ảnh. */
 async function exists(url) {
-  try { return (await fetch(url, { method: "HEAD", cache: "no-store" })).ok; }
-  catch { return false; }
+  if (location.protocol !== "file:") {
+    try {
+      const r = await fetch(url, { method: "HEAD", cache: "no-store" });
+      if (r.ok) return true;
+      if (r.status === 404) return false;
+    } catch (e) { /* rơi xuống cách dự phòng */ }
+  }
+  const im = await loadImg(url);
+  return im.naturalWidth > 0;
 }
 async function countPages() {
   if (CONFIG.total > 0) return CONFIG.total;
@@ -182,59 +213,83 @@ function loadImg(src) {
   return new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(im); im.src = src; });
 }
 
-(async () => {
-  const [N, mobileTitleOk] = await Promise.all([
-    countPages(),
-    CONFIG.titleMobile ? exists(CONFIG.folder + CONFIG.titleMobile) : false
-  ]);
-  if (!N) { $("loadText").textContent = "Không tìm thấy ảnh trong img/. Kiểm tra lại tên file."; return; }
+/* Khung vừa màn hình cho một ảnh có tỉ lệ r (dùng cho màn mở đầu) */
+function fitBox(r, single) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let w, h;
+  if (single) {
+    const availH = vh - mbarH() - 8;
+    w = vw; h = w / r;
+    if (h > availH) { h = availH; w = h * r; }
+  } else {
+    h = vh * CONFIG.heightPct; w = h * r;
+    if (w > vw - 160) { w = vw - 160; h = w / r; }
+  }
+  return { w: Math.floor(w), h: Math.floor(h) };
+}
 
-  const head = [titleSrc, ...Array.from({ length: Math.min(CONFIG.preloadFirst, N) }, (_, i) => pageUrl(i + 1))];
-  let done = 0;
-  const imgs = await Promise.all(head.map(src => loadImg(src).then(im => {
-    done++;
-    bar.style.width = (done / head.length * 100) + "%";
-    $("loadText").textContent = `Đang tải ${done}/${head.length} · ${N} trang`;
-    return im;
-  })));
-  start(N, imgs[1], mobileTitleOk ? CONFIG.folder + CONFIG.titleMobile : null);
+/* ================= KHỞI ĐỘNG ================= */
+(async () => {
+  const single0 = isSingle();
+  document.body.classList.toggle("single", single0);
+
+  // Bắt đầu đếm trang & kiểm tra bìa mobile song song
+  const pN = countPages();
+  const pMobileOk = exists(mobileTitleSrc0);
+
+  // 1) Tải bìa đúng chế độ rồi cho hiện dần trong 2 giây
+  let introImg = await loadImg(single0 ? mobileTitleSrc0 : desktopTitleSrc);
+  if (!introImg.naturalWidth && single0) introImg = await loadImg(desktopTitleSrc);
+  let introDone = Promise.resolve();
+  if (introImg.naturalWidth) {
+    const r = introImg.naturalWidth / introImg.naturalHeight;
+    const box = $("introBox"), img = $("introImg");
+    const size = () => { const b = fitBox(r, isSingle()); box.style.width = b.w + "px"; box.style.height = b.h + "px"; };
+    size();
+    window.addEventListener("resize", size);
+    img.src = introImg.src;
+    img.classList.add("play");
+    introDone = new Promise(res => setTimeout(() => { window.removeEventListener("resize", size); res(); }, CONFIG.introMs));
+  }
+
+  // 2) Trong lúc đó: đếm trang, tải trước vài trang đầu
+  const N = await pN;
+  const mobileOk = await pMobileOk;
+  if (!N) { console.warn("Không tìm thấy ảnh trang trong", CONFIG.folder); return; }  // giữ nguyên bìa
+  const heads = await Promise.all(
+    Array.from({ length: Math.min(CONFIG.preloadFirst, N) }, (_, i) => loadImg(pageUrl(i + 1)))
+  );
+  await introDone;
+
+  // 3) Dựng sách bên dưới rồi mờ dần màn mở đầu
+  start(N, heads[0], mobileOk ? mobileTitleSrc0 : null);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $("intro").style.opacity = 0;
+    setTimeout(() => $("intro").remove(), 650);
+  }));
 })();
 
+/* ================= SÁCH ================= */
 function start(N, firstPage, mobileTitleSrc) {
   const pw0 = firstPage.naturalWidth, ph0 = firstPage.naturalHeight;
   const ratio = pw0 / ph0;
 
   let pageFlip = null, single = null;
 
-  /* ---- Kích thước ----
-     Desktop: 2 trang, cao 90% màn hình.
-     Mobile : 1 trang, rộng hết màn hình (nếu quá cao thì co theo chiều cao). */
+  /* Desktop: 2 trang, cao 90% màn hình. Mobile: 1 trang, rộng hết màn hình. */
   function measure() {
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const s = vw <= CONFIG.mobileBreak || vw < vh;
-    let pw, ph;
-    if (s) {
-      const mbar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mbar")) || 56;
-      const availH = vh - mbar - 8;
-      pw = vw; ph = pw / ratio;
-      if (ph > availH) { ph = availH; pw = ph * ratio; }
-    } else {
-      ph = vh * CONFIG.heightPct; pw = ph * ratio;
-      if (pw * 2 > vw - 160) { pw = (vw - 160) / 2; ph = pw / ratio; }
-    }
-    return { s, pw, ph };
+    const s = isSingle();
+    const b = fitBox(s ? ratio : ratio * 2, s);
+    return { s, pw: s ? b.w : b.w / 2, ph: b.h };
   }
   function applySize(m) {
     document.body.classList.toggle("single", m.s);
     wrap.style.width = Math.floor(m.s ? m.pw : m.pw * 2) + "px";
     wrap.style.height = Math.floor(m.ph) + "px";
-    // ép thư viện: mobile → portrait (1 trang), desktop → landscape (2 trang)
     if (pageFlip) pageFlip.getSettings().minWidth = m.s ? Math.ceil(m.pw * 0.6) : 1;
   }
 
-  /* ---- Ánh xạ chỉ số trang ----
-     Desktop: 0,1 = hai nửa bìa; ảnh n ở index n+1.
-     Mobile : 0 = bìa;           ảnh n ở index n. */
+  /* Desktop: 0,1 = hai nửa bìa; ảnh n ở index n+1.  Mobile: 0 = bìa; ảnh n ở index n. */
   const firstIdx = () => single ? 1 : 2;
   const toContent = idx => idx - firstIdx() + 1;
   const toIndex = n => n + firstIdx() - 1;
@@ -260,10 +315,10 @@ function start(N, firstPage, mobileTitleSrc) {
 
     if (single) {
       if (mobileTitleSrc) addPage(book, mobileTitleSrc, "", "Bìa", true);
-      else addPage(book, titleSrc, "title-fit", "Bìa", true);
+      else addPage(book, desktopTitleSrc, "title-fit", "Bìa", true);
     } else {
-      addPage(book, titleSrc, "half left", "Bìa (trái)", true);
-      addPage(book, titleSrc, "half right", "Bìa (phải)", true);
+      addPage(book, desktopTitleSrc, "half left", "Bìa (trái)", true);
+      addPage(book, desktopTitleSrc, "half right", "Bìa (phải)", true);
     }
     for (let i = 1; i <= N; i++) addPage(book, pageUrl(i), "", `Trang ${i}`, false);
 
@@ -290,7 +345,7 @@ function start(N, firstPage, mobileTitleSrc) {
     const m = measure();
     if (m.s !== single) {
       const idx = pageFlip.getCurrentPageIndex();
-      build(m, idx >= firstIdx() ? toContent(idx) : 0);   // đổi chế độ → dựng lại, giữ trang đang đọc
+      build(m, idx >= firstIdx() ? toContent(idx) : 0);
     } else {
       applySize(m);
     }
@@ -304,7 +359,6 @@ function start(N, firstPage, mobileTitleSrc) {
   function next() { atEnd() ? pageFlip.flip(0) : pageFlip.flipNext(); }   // cuối sách → về bìa
   function prev() { if (idxNow() > 0) pageFlip.flipPrev(); }              // ở bìa: không lùi
 
-  // Kéo phải→trái ở trang cuối → về bìa (thư viện tự lo các trang còn lại)
   let sx = 0, sy = 0, sIdx = 0, tracking = false;
   function gStart(x, y) { sx = x; sy = y; sIdx = idxNow(); tracking = true; }
   function gEnd(x, y) {
@@ -361,9 +415,6 @@ function start(N, firstPage, mobileTitleSrc) {
   // Link ...#12 → mở thẳng trang 12
   const sp = parseInt(location.hash.slice(1), 10);
   build(measure(), sp >= 1 && sp <= N ? sp : 0);
-
-  $("loader").style.opacity = 0;
-  setTimeout(() => $("loader").remove(), 400);
 }
 </script>
 </body>
