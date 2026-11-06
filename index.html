@@ -10,6 +10,9 @@
     --bg: #2b2620;
     --text: #f3ead8;
     --accent: #d9b26f;
+    --parch: #e8d9b5;
+    --ink: #4a3520;
+    --serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
     --mbar: 56px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,7 +46,7 @@
   /* Trang trắng chèn thêm khi số trang lẻ (desktop) để bìa sau luôn nằm bên trái */
   .page.blank { background: #fff; }
 
-  /* ---- Desktop: mũi tên hai bên + số trang phía dưới ---- */
+  /* ---- Desktop: mũi tên hai bên + thanh tiến trình phía dưới ---- */
   .nav {
     position: fixed; top: 50%; transform: translateY(-50%); z-index: 8;
     width: 52px; height: 52px; border-radius: 50%;
@@ -56,14 +59,8 @@
   #prevBtn { left: 20px; }
   #nextBtn { right: 20px; }
   #info {
-    position: fixed; left: 50%; bottom: max(4px, calc(2.5vh - 13px)); transform: translateX(-50%);
-    z-index: 8; display: flex; align-items: center; gap: 10px;
-    font-size: 13px; opacity: .75; font-variant-numeric: tabular-nums;
-  }
-  .pageInput {
-    width: 48px; height: 26px; text-align: center; border-radius: 6px;
-    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.3);
-    color: var(--text); font-size: 13px;
+    position: fixed; left: 50%; bottom: max(2px, calc(2.5vh - 13px)); transform: translateX(-50%);
+    z-index: 8; width: min(640px, 72vw);
   }
   #fsBtn {
     position: fixed; top: 10px; right: 14px; z-index: 8;
@@ -78,18 +75,154 @@
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
     height: calc(var(--mbar) + env(safe-area-inset-bottom));
     padding: 0 12px env(safe-area-inset-bottom);
-    align-items: center; justify-content: space-between; gap: 10px;
+    align-items: center; justify-content: space-between; gap: 12px;
     background: rgba(0,0,0,.35); backdrop-filter: blur(6px);
-    font-variant-numeric: tabular-nums; font-size: 15px;
   }
   .mbtn {
+    flex: none;
     width: 44px; height: 40px; border-radius: 999px;
     border: 1px solid rgba(255,255,255,.25); background: transparent;
     color: var(--text); font-size: 22px; line-height: 1;
   }
-  #mbar .mid { display: flex; align-items: center; gap: 10px; }
+  #mmid { flex: 1; min-width: 0; }
   body.single #mbar { display: flex; }
   body.single .nav, body.single #info, body.single #fsBtn { display: none; }
+
+  /* ---- Thanh tiến trình "khám phá" — phong cách sách cổ ---- */
+  .prog {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--parch); font-family: var(--serif);
+  }
+  .prog .lbl {
+    flex: none; min-width: 6.5em; text-align: right; white-space: nowrap;
+    font-style: italic; font-size: 14px; letter-spacing: .03em; opacity: .9;
+    font-variant-numeric: oldstyle-nums;
+    transition: opacity .25s;
+  }
+  .prog .lbl.swap { opacity: .25; }
+  .prog .orn { flex: none; color: var(--accent); opacity: .75; font-size: 16px; line-height: 1; }
+  .prog .track {
+    position: relative; flex: 1; min-width: 60px; height: 24px;
+    cursor: pointer; touch-action: none; outline: none;
+  }
+  .prog .rail {
+    position: absolute; left: 0; right: 0; top: 50%; height: 3px;
+    transform: translateY(-50%); border-radius: 3px;
+    background: rgba(232,217,181,.16);
+    box-shadow: 0 0 0 .5px rgba(232,217,181,.28);
+    transition: height .2s;
+  }
+  .prog .track:hover .rail, .prog.drag .rail, .prog .track:focus-visible .rail { height: 5px; }
+  .prog .fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    border-radius: inherit; overflow: hidden;
+    background: linear-gradient(90deg, #8a6430, #c9a05a 60%, #ecd49a);
+    transition: width .6s cubic-bezier(.3,.7,.2,1);
+  }
+  .prog .fill::after {                       /* vệt sáng lướt nhẹ */
+    content: ""; position: absolute; top: 0; bottom: 0; width: 46px; left: -46px;
+    background: linear-gradient(90deg, transparent, rgba(255,248,225,.8), transparent);
+    animation: shimmer 5s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0%, 60% { left: -46px; } 100% { left: 100%; } }
+  .prog .ticks { position: absolute; inset: 0; pointer-events: none; }
+  .prog .tick {
+    position: absolute; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+    border-radius: 50%; background: rgba(232,217,181,.38);
+    transition: background .4s, transform .4s;
+  }
+  .prog .tick.on { background: #f3dfa8; transform: scale(1.15); }
+  .prog .knob {
+    position: absolute; top: 50%; left: 0; width: 16px; height: 16px;
+    margin-left: -8px; transform: translateY(-50%); border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff3d0, #d9b26f 45%, #8a6430 100%);
+    box-shadow: 0 0 0 2px rgba(43,38,32,.9), 0 1px 5px rgba(0,0,0,.55);
+    transition: left .6s cubic-bezier(.3,.7,.2,1), transform .2s;
+  }
+  .prog .knob::before {                      /* quầng sáng toả nhẹ quanh núm */
+    content: ""; position: absolute; inset: -6px; border-radius: 50%;
+    border: 1px solid rgba(217,178,111,.7);
+    animation: halo 2.8s ease-out infinite;
+  }
+  .prog .knob::after {
+    content: "✦"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; color: #5a3f1c; line-height: 1;
+  }
+  @keyframes halo { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+  .prog .track:hover .knob, .prog.drag .knob { transform: translateY(-50%) scale(1.18); }
+  .prog.drag .knob, .prog.drag .fill { transition: none; }
+
+  /* Thẻ xem trước khi rê / kéo trên thanh */
+  .prog .tip {
+    position: absolute; bottom: calc(100% + 10px); left: 0;
+    transform: translate(-50%, 6px); opacity: 0; pointer-events: none;
+    transition: opacity .18s, transform .18s;
+    padding: 6px 6px 5px; border-radius: 4px; text-align: center; white-space: nowrap;
+    background: linear-gradient(#f6edd6, #e5d3a9);
+    color: var(--ink); font-style: italic; font-size: 13px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.5), inset 0 0 0 1px rgba(120,90,50,.35);
+    z-index: 2;
+  }
+  .prog .tip::after {
+    content: ""; position: absolute; top: 100%; left: calc(50% + var(--ax, 0px));
+    margin-left: -6px; border: 6px solid transparent; border-top-color: #e5d3a9;
+  }
+  .prog .tip.show { opacity: 1; transform: translate(-50%, 0); }
+  .prog .thumbs { display: flex; justify-content: center; gap: 1px; margin-bottom: 4px; }
+  .prog .thumbs i {
+    display: block; width: var(--tw); height: var(--th);
+    background: #fff center / cover no-repeat;
+    box-shadow: 0 0 0 1px rgba(90,60,30,.3);
+  }
+  .prog .thumbs:empty { display: none; }
+
+  /* Mobile: nhãn ở trên, thanh ở dưới, bỏ hoa văn hai đầu */
+  body.single .prog { flex-direction: column; align-items: stretch; gap: 0; }
+  body.single .prog .lbl { min-width: 0; text-align: center; font-size: 13px; line-height: 16px; }
+  body.single .prog .orn { display: none; }
+  body.single .prog .track { flex: none; height: 22px; }
+
+  /* ---- Nút bật/tắt trái tim ---- */
+  #heartBtn {
+    position: fixed; top: 9px; right: 50px; z-index: 8;
+    width: 30px; height: 30px; padding: 5px; border-radius: 50%;
+    background: transparent; border: none; cursor: pointer;
+    opacity: .75; transition: opacity .2s, transform .2s, background .2s;
+  }
+  #heartBtn:hover { opacity: 1; transform: scale(1.08); }
+  #heartBtn svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  #heartBtn .fillp { transition: opacity .25s; }
+  #heartBtn.off { opacity: .45; }
+  #heartBtn.off .fillp { opacity: 0; }
+  #heartBtn[hidden] { display: none; }
+  body.single #heartBtn {
+    top: calc(8px + env(safe-area-inset-top)); right: 10px;
+    width: 34px; height: 34px; padding: 7px; background: rgba(0,0,0,.28);
+  }
+
+  /* ---- Trái tim bay lên ---- */
+  #hearts { position: fixed; inset: 0; z-index: 7; pointer-events: none; overflow: hidden; }
+  .hrt {
+    position: absolute; left: 0; top: 0; opacity: 0;
+    will-change: transform, opacity;
+    animation: hrtRise var(--d) cubic-bezier(.22,.61,.36,1) var(--delay) forwards;
+  }
+  .hrt > span { display: block; opacity: var(--op); animation: hrtSway var(--sw) ease-in-out infinite alternate; }
+  .hrt svg {
+    display: block; width: var(--s); height: var(--s); overflow: visible;
+    filter: drop-shadow(0 2px 5px rgba(110,20,40,.35));
+  }
+  @keyframes hrtRise {
+    0%   { opacity: 0; transform: translate(var(--x), var(--y)) scale(.35) rotate(var(--r0)); }
+    15%  { opacity: 1; }
+    65%  { opacity: .85; }
+    100% { opacity: 0; transform: translate(calc(var(--x) + var(--dx)), calc(var(--y) - var(--rise))) scale(1) rotate(var(--r1)); }
+  }
+  @keyframes hrtSway {
+    from { transform: translateX(calc(var(--sa) * -1)); }
+    to   { transform: translateX(var(--sa)); }
+  }
 
   /* ---- Màn mở đầu: bìa hiện dần, mờ ảo rồi nét (2 giây) ---- */
   #intro {
@@ -125,32 +258,57 @@
   }
   @media (prefers-reduced-motion: reduce) {
     #introBox.play .ipic { animation-duration: .3s; }
+    .prog .fill::after, .prog .knob::before { animation: none; }
   }
 </style>
 </head>
 <body>
 
+<!-- Màu dùng chung cho các trái tim -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="hg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc4cf"/><stop offset="1" stop-color="#d94a68"/></linearGradient>
+    <linearGradient id="hg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd9d2"/><stop offset="1" stop-color="#e0727a"/></linearGradient>
+    <linearGradient id="hg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3b0"/><stop offset="1" stop-color="#d98a5a"/></linearGradient>
+    <linearGradient id="hg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7b3c6"/><stop offset="1" stop-color="#b8365a"/></linearGradient>
+  </defs>
+</svg>
+
 <div id="intro"><div id="introBox"><div class="ipic" id="introEnd"></div><div class="ipic" id="introTitle"></div></div></div>
 
 <div id="stage"><div id="bookWrap"></div></div>
+<div id="hearts" aria-hidden="true"></div>
 
 <!-- Desktop -->
 <button class="nav" id="prevBtn" aria-label="Trang trước">‹</button>
 <button class="nav" id="nextBtn" aria-label="Trang sau">›</button>
-<div id="info">
-  <span class="pageInfo">Bìa</span>
-  <input class="pageInput" type="number" min="0" placeholder="Tới" aria-label="Đi tới trang">
-</div>
+<div id="info"></div>
 <button id="fsBtn" aria-label="Toàn màn hình" title="Toàn màn hình">⛶</button>
+<button id="heartBtn" aria-pressed="true" aria-label="Bật/tắt hiệu ứng trái tim" title="Trái tim bay">
+  <svg viewBox="0 0 24 24">
+    <path class="fillp" fill="url(#hg0)" d="M12 21s-7.4-4.5-9.5-9.2C1 8.3 3.1 4.6 6.7 4.6c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.6 0 5.7 3.7 4.2 7.2C19.4 16.5 12 21 12 21z"/>
+    <path fill="none" stroke="#f3d6a0" stroke-width="1.4" stroke-linejoin="round" d="M12 21s-7.4-4.5-9.5-9.2C1 8.3 3.1 4.6 6.7 4.6c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.6 0 5.7 3.7 4.2 7.2C19.4 16.5 12 21 12 21z"/>
+  </svg>
+</button>
 
 <!-- Mobile -->
 <div id="mbar">
   <button class="mbtn" id="mPrev" aria-label="Trang trước">‹</button>
-  <div class="mid">
-    <span class="pageInfo">Bìa</span>
-    <input class="pageInput" type="number" inputmode="numeric" min="0" placeholder="Tới" aria-label="Đi tới trang">
-  </div>
+  <div id="mmid"></div>
   <button class="mbtn" id="mNext" aria-label="Trang sau">›</button>
+</div>
+
+<!-- Thanh tiến trình (JS đặt vào #info hoặc #mmid tuỳ chế độ) -->
+<div class="prog" id="prog">
+  <span class="lbl">Bìa</span>
+  <span class="orn" aria-hidden="true">☙</span>
+  <div class="track" tabindex="0" role="slider" aria-label="Tiến trình đọc — bấm hoặc kéo để tới trang">
+    <div class="rail"><div class="fill"></div></div>
+    <div class="ticks"></div>
+    <div class="knob"></div>
+    <div class="tip"><div class="thumbs"></div><div class="tlbl"></div></div>
+  </div>
+  <span class="orn" aria-hidden="true">❧</span>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
@@ -160,6 +318,9 @@ const CONFIG = {
   folder: "img/",
   title: "title.jpg",                // bìa trước (cùng khổ với các trang)
   end: "end.jpg",                    // bìa sau  (cùng khổ với các trang)
+  after: "after.jpg",                // trang kết, đứng sau trang cuối (không có file → bỏ qua)
+  afterOnMobile: false,              // false = điện thoại không hiện after.jpg
+  afterLabel: "Lời kết",             // tên trang kết trên thanh tiến trình
   ext: "jpg",
   prefix: "",                        // ví dụ "p-" nếu ảnh tên p-01.jpg
   pad: 0,                            // 0 → 1.jpg ; 2 → 01.jpg
@@ -168,18 +329,31 @@ const CONFIG = {
   heightPct: 0.90,                   // desktop: trang cao 90% màn hình
   mobileBreak: 768,                  // rộng ≤ 768px hoặc màn dọc → 1 trang
   introMs: 2000,                     // thời gian bìa hiện dần lúc mở trang
-  preloadFirst: 4
+  preloadFirst: 4,
+
+  hearts: {
+    enabled: true,                   // mặc định bật hay tắt
+    showToggle: true,                // hiện nút ♥ để người xem tự bật/tắt
+    min: 1, max: 5,                  // mỗi lần bay lên từ 1 đến 5 trái tim
+    every: 4500,                     // khoảng cách giữa hai lần bay (ms, có dao động ±25%)
+    onFlip: false,                   // true = thêm một lần bay mỗi khi lật trang
+    size: [14, 28],                  // cỡ trái tim (px), nhỏ nhất – lớn nhất
+    duration: [4500, 7500],          // thời gian bay lên và mờ dần (ms)
+    opacity: [0.55, 0.9],            // độ đậm
+    respectReducedMotion: true       // máy bật "giảm chuyển động" → không bay
+  }
 };
 /* ================================================================= */
 
 const $ = id => document.getElementById(id);
-const $$ = sel => document.querySelectorAll(sel);
 const wrap = $("bookWrap");
 const pageUrl = n => `${CONFIG.folder}${CONFIG.prefix}${String(CONFIG.start + n - 1).padStart(CONFIG.pad, "0")}.${CONFIG.ext}`;
 const titleSrc = CONFIG.folder + CONFIG.title;
 const endSrc = CONFIG.folder + CONFIG.end;
+const afterSrc = CONFIG.folder + CONFIG.after;
 const mbarH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mbar")) || 56;
 const isSingle = () => window.innerWidth <= CONFIG.mobileBreak || window.innerWidth < window.innerHeight;
+const rnd = (a, b) => a + Math.random() * (b - a);
 
 /* Kiểm tra ảnh có tồn tại không.
    - Chạy trên web (http/https): hỏi nhanh bằng HEAD, không tải cả ảnh.
@@ -225,13 +399,88 @@ function fitBox(r, single) {
   return { w: Math.floor(w), h: Math.floor(h) };
 }
 
+/* ================= TRÁI TIM BAY LÊN ================= */
+const Hearts = (() => {
+  const H = CONFIG.hearts || {};
+  const KEY = "hha15-hearts";
+  const layer = $("hearts"), btn = $("heartBtn");
+  const PATH = "M12 21s-7.4-4.5-9.5-9.2C1 8.3 3.1 4.6 6.7 4.6c2.1 0 3.6 1.2 4.3 2.6.7-1.4 2.2-2.6 4.3-2.6 3.6 0 5.7 3.7 4.2 7.2C19.4 16.5 12 21 12 21z";
+  const reduce = !!H.respectReducedMotion && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let on = H.enabled !== false, started = false, timer = null, live = 0;
+  try { const v = localStorage.getItem(KEY); if (v === "1" || v === "0") on = v === "1"; } catch (e) {}
+
+  function paintBtn() {
+    btn.classList.toggle("off", !on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on ? "Tắt trái tim bay" : "Bật trái tim bay";
+  }
+  function spawn(delay) {
+    if (live > 30) return;
+    const r = wrap.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const hasBook = r.width > 0;
+    const left = hasBook ? r.left - r.width * 0.08 : vw * 0.15;
+    const right = hasBook ? r.right + r.width * 0.08 : vw * 0.85;
+    const [s0, s1] = H.size || [14, 28], [d0, d1] = H.duration || [4500, 7500], [o0, o1] = H.opacity || [0.55, 0.9];
+    const s = rnd(s0, s1), d = rnd(d0, d1);
+    const x = Math.min(Math.max(rnd(left, right), 4), vw - s - 4);
+    const y = (hasBook ? r.bottom : vh) - s * 0.6 - rnd(0, 40);
+    const el = document.createElement("div");
+    el.className = "hrt";
+    const st = el.style;
+    st.setProperty("--s", s.toFixed(1) + "px");
+    st.setProperty("--x", x.toFixed(1) + "px");
+    st.setProperty("--y", y.toFixed(1) + "px");
+    st.setProperty("--rise", (vh * rnd(0.35, 0.6)).toFixed(0) + "px");
+    st.setProperty("--dx", rnd(-50, 50).toFixed(0) + "px");
+    st.setProperty("--r0", rnd(-20, 20).toFixed(0) + "deg");
+    st.setProperty("--r1", rnd(-12, 12).toFixed(0) + "deg");
+    st.setProperty("--sa", rnd(6, 16).toFixed(0) + "px");
+    st.setProperty("--sw", rnd(1.4, 2.4).toFixed(2) + "s");
+    st.setProperty("--d", d.toFixed(0) + "ms");
+    st.setProperty("--delay", delay.toFixed(0) + "ms");
+    st.setProperty("--op", rnd(o0, o1).toFixed(2));
+    const g = "hg" + Math.floor(Math.random() * 4);
+    el.innerHTML = `<span><svg viewBox="0 0 24 24"><path fill="url(#${g})" d="${PATH}"/>` +
+      `<ellipse cx="8" cy="8.6" rx="2.3" ry="1.5" fill="#fff" opacity=".45" transform="rotate(-30 8 8.6)"/></svg></span>`;
+    layer.appendChild(el);
+    live++;
+    setTimeout(() => { el.remove(); live--; }, d + delay + 100);
+  }
+  function burst() {
+    if (!on || reduce || document.hidden) return;
+    const lo = Math.max(1, Math.round(H.min || 1)), hi = Math.max(lo, Math.round(H.max || 5));
+    const n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    let t = 0;
+    for (let i = 0; i < n; i++) { spawn(t); t += rnd(180, 450); }
+  }
+  function loop() {
+    clearTimeout(timer);
+    timer = setTimeout(() => { burst(); loop(); }, (H.every || 4500) * rnd(0.75, 1.25));
+  }
+  btn.addEventListener("click", () => {
+    on = !on;
+    try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+    paintBtn();
+    if (on && started) burst();
+    if (!on) layer.querySelectorAll(".hrt").forEach(el => { el.style.transition = "opacity .5s"; el.style.opacity = 0; });
+  });
+  btn.hidden = H.showToggle === false;
+  paintBtn();
+  return {
+    start() { if (started) return; started = true; setTimeout(burst, 700); loop(); },
+    flip() { if (H.onFlip) burst(); }
+  };
+})();
+
 /* ================= KHỞI ĐỘNG ================= */
 (async () => {
   document.body.classList.toggle("single", isSingle());
 
-  // Bắt đầu đếm trang & kiểm tra bìa sau song song
+  // Bắt đầu đếm trang & kiểm tra bìa sau, trang kết song song
   const pN = countPages();
   const pEndOk = exists(endSrc);
+  const pAfterOk = exists(afterSrc);
 
   // 1) Tải bìa rồi cho hiện dần trong 2 giây
   //    Desktop: bìa sau bên trái + bìa trước bên phải. Mobile: chỉ bìa trước.
@@ -257,6 +506,7 @@ function fitBox(r, single) {
   // 2) Trong lúc đó: đếm trang, tải trước vài trang đầu
   const N = await pN;
   const endOk = await pEndOk;
+  const afterOk = await pAfterOk;
   if (!N) { console.warn("Không tìm thấy ảnh trang trong", CONFIG.folder); return; }  // giữ nguyên bìa
   const heads = await Promise.all(
     Array.from({ length: Math.min(CONFIG.preloadFirst, N) }, (_, i) => loadImg(pageUrl(i + 1)))
@@ -265,25 +515,26 @@ function fitBox(r, single) {
   await introDone;
 
   // 3) Dựng sách bên dưới rồi mờ dần màn mở đầu
-  start(N, heads[0], endOk);
+  start(N, heads[0], endOk, afterOk);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     $("intro").style.opacity = 0;
-    setTimeout(() => $("intro").remove(), 650);
+    setTimeout(() => { $("intro").remove(); Hearts.start(); }, 650);
   }));
 })();
 
 /* ================= SÁCH =================
-   Sách lật vòng tròn. Thứ tự trang trong thư viện:
-     Desktop: [bìa sau | bìa trước] [1|2] [3|4] … [N-1|N]  (N lẻ: [N|trắng])  [bìa sau | bìa trước]
-     Mobile : bìa trước, 1 … N, bìa sau, bìa trước
+   Sách lật vòng tròn. Thứ tự trang trong thư viện (C = số trang nội dung):
+     Desktop: [bìa sau | bìa trước] [1|2] … [N | after]  (C lẻ: thêm trang trắng)  [bìa sau | bìa trước]
+     Mobile : bìa trước, 1 … N, bìa sau, bìa trước       (after.jpg chỉ có khi afterOnMobile: true)
    Cặp bìa ở cuối là bản sao của cặp bìa ở đầu. Khi lật qua đầu/cuối, sách
    lặng lẽ nhảy sang bản sao (trông y hệt) rồi mới lật, nên lật xuôi hay
    ngược đều có hiệu ứng đúng chiều và không bao giờ bị chặn. */
-function start(N, firstPage, endOk) {
+function start(N, firstPage, endOk, afterOk) {
   const pw0 = firstPage.naturalWidth, ph0 = firstPage.naturalHeight;
   const ratio = pw0 / ph0;
 
-  let pageFlip = null, single = null, tailIdx = 0;
+  let pageFlip = null, single = null, tailIdx = 0, C = N;
+  let srcs = [];                                        // ảnh của từng trang theo index (null = trang trắng)
 
   /* Desktop: 2 trang, cao 90% màn hình. Mobile: 1 trang, rộng hết màn hình. */
   function measure() {
@@ -298,11 +549,12 @@ function start(N, firstPage, endOk) {
     if (pageFlip) pageFlip.getSettings().minWidth = m.s ? Math.ceil(m.pw * 0.6) : 1;
   }
 
-  /* Desktop: 0,1 = bìa sau, bìa trước; ảnh n ở index n+1.  Mobile: 0 = bìa trước; ảnh n ở index n. */
+  /* Desktop: 0,1 = bìa sau, bìa trước; trang nội dung c ở index c+1.  Mobile: 0 = bìa trước; c ở index c. */
   const firstIdx = () => single ? 1 : 2;
   const toContent = idx => idx - firstIdx() + 1;
-  const toIndex = n => n + firstIdx() - 1;
-  const isContent = idx => idx >= firstIdx() && toContent(idx) <= N;
+  const toIndex = c => c + firstIdx() - 1;
+  const isContent = idx => idx >= firstIdx() && toContent(idx) <= C;
+  const contentSrc = c => c <= N ? pageUrl(c) : afterSrc;
 
   function addPage(book, src, cls, alt, hard) {
     const div = document.createElement("div");
@@ -314,28 +566,34 @@ function start(N, firstPage, endOk) {
       div.appendChild(img);
     }
     book.appendChild(div);
+    srcs.push(src || null);
   }
   const addTitle = book => addPage(book, titleSrc, "", "Bìa trước", true);
   const addEnd = book => addPage(book, endOk ? endSrc : null, endOk ? "" : "blank", "Bìa sau", true);
+  const addContent = book => {
+    for (let c = 1; c <= C; c++) addPage(book, contentSrc(c), "", c <= N ? `Trang ${c}` : CONFIG.afterLabel, false);
+  };
 
   function build(m, startContent) {
     if (pageFlip) { try { pageFlip.destroy(); } catch (e) {} pageFlip = null; }
     single = m.s;
+    C = N + (afterOk && (!single || CONFIG.afterOnMobile) ? 1 : 0);
     applySize(m);
     wrap.innerHTML = "";
+    srcs = [];
     const book = document.createElement("div");
     book.id = "book";
     wrap.appendChild(book);
 
     if (single) {
       addTitle(book);
-      for (let i = 1; i <= N; i++) addPage(book, pageUrl(i), "", `Trang ${i}`, false);
+      addContent(book);
       addEnd(book);
       addTitle(book);                                   // bản sao để lật vòng
     } else {
       addEnd(book); addTitle(book);
-      for (let i = 1; i <= N; i++) addPage(book, pageUrl(i), "", `Trang ${i}`, false);
-      if (N % 2) addPage(book, null, "blank", "", false); // giữ bìa sau luôn ở bên trái
+      addContent(book);
+      if (C % 2) addPage(book, null, "blank", "", false); // giữ bìa sau luôn ở bên trái
       addEnd(book); addTitle(book);                     // bản sao để lật vòng
     }
 
@@ -353,9 +611,10 @@ function start(N, firstPage, endOk) {
     });
     pageFlip.loadFromHTML(book.querySelectorAll(".page"));
     tailIdx = pageFlip.getPageCount() - (single ? 1 : 2);
-    pageFlip.on("flip", updateUI);
+    pageFlip.on("flip", () => { updateUI(); Hearts.flip(); });
     pageFlip.on("changeOrientation", updateUI);
-    if (startContent > 0) pageFlip.turnToPage(toIndex(Math.min(startContent, N)));
+    if (startContent > 0) pageFlip.turnToPage(toIndex(Math.min(startContent, C)));
+    Prog.rebuild();
     updateUI();
   }
 
@@ -397,17 +656,131 @@ function start(N, firstPage, endOk) {
   stage.addEventListener("mousedown",  e => prepare(e.clientX), true);
   stage.addEventListener("mousemove",  e => { if (!e.buttons) prepare(e.clientX); }, true);  // để góc trang hiện gợi ý lật ở cả hai đầu
 
+  /* ---- Nhãn trang ---- */
+  function labelFor(idx) {
+    if (!isContent(idx)) return (single && idx === C + 1) ? "Bìa sau" : "Bìa";
+    const c = toContent(idx);
+    const nums = (single ? [c] : [c, c + 1]).filter(k => k <= N && k <= C);
+    return nums.length ? `${nums.join("–")} / ${N}` : CONFIG.afterLabel;
+  }
+
+  /* ---- Thanh tiến trình "khám phá" ---- */
+  const Prog = (() => {
+    const el = $("prog"), lbl = el.querySelector(".lbl"), track = el.querySelector(".track");
+    const fill = el.querySelector(".fill"), knob = el.querySelector(".knob"), ticksEl = el.querySelector(".ticks");
+    const tip = el.querySelector(".tip"), thumbs = el.querySelector(".thumbs"), tlbl = el.querySelector(".tlbl");
+    let stops = [], ticks = [], dragging = false, lastK = -1, lastLabel = "";
+
+    /* Mỗi "điểm dừng" là một lần nhìn: desktop = một cặp trang, mobile = một trang */
+    function rebuild() {
+      (single ? $("mmid") : $("info")).appendChild(el);
+      stops = [0];
+      if (single) for (let i = 1; i <= C + 1; i++) stops.push(i);    // … + bìa sau
+      else for (let c = 1; c <= C; c += 2) stops.push(toIndex(c));
+      ticksEl.innerHTML = ""; ticks = [];
+      if (stops.length <= 90) {
+        stops.forEach((_, k) => {
+          const t = document.createElement("i");
+          t.className = "tick";
+          t.style.left = frac(k) * 100 + "%";
+          ticksEl.appendChild(t); ticks.push(t);
+        });
+      }
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", String(stops.length - 1));
+      lastK = -1;
+    }
+    const frac = k => stops.length > 1 ? k / (stops.length - 1) : 0;
+    function stopOf(idx) {
+      if (idx >= tailIdx) return 0;                     // bản sao cặp bìa = bìa
+      let k = 0;
+      for (let i = 0; i < stops.length; i++) if (stops[i] <= idx) k = i;
+      return k;
+    }
+    function kAt(clientX) {
+      const r = track.getBoundingClientRect();
+      const f = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
+      return Math.round(f * (stops.length - 1));
+    }
+    function paint(k) {
+      const p = frac(k) * 100;
+      fill.style.width = p + "%";
+      knob.style.left = p + "%";
+      if (k !== lastK) ticks.forEach((t, i) => t.classList.toggle("on", i <= k));
+      lastK = k;
+    }
+    function setLabel(text) {
+      if (text === lastLabel) return;
+      lastLabel = text;
+      lbl.classList.add("swap");
+      setTimeout(() => { lbl.textContent = text; lbl.classList.remove("swap"); }, 120);
+    }
+    function showTip(k) {
+      const idx = stops[k];
+      const pics = single ? [srcs[idx]] : [srcs[idx], srcs[idx + 1]];
+      const tw = single ? 40 : 38;
+      thumbs.style.setProperty("--tw", tw + "px");
+      thumbs.style.setProperty("--th", Math.round(tw / ratio) + "px");
+      thumbs.innerHTML = pics.map(s => `<i style="${s ? `background-image:url('${s}')` : ""}"></i>`).join("");
+      tlbl.textContent = labelFor(idx);
+      // đặt thẻ trên vị trí điểm dừng, không tràn mép màn hình
+      const r = track.getBoundingClientRect();
+      const x = frac(k) * r.width;
+      tip.classList.add("show");
+      const w = tip.offsetWidth, vw = window.innerWidth;
+      const cx = Math.min(Math.max(r.left + x, w / 2 + 6), vw - w / 2 - 6);
+      tip.style.left = (cx - r.left) + "px";
+      tip.style.setProperty("--ax", (r.left + x - cx) + "px");
+    }
+    const hideTip = () => tip.classList.remove("show");
+
+    function go(k) {
+      const t = stops[k];
+      if (k === stopOf(idxNow())) { update(); return; }
+      if (atTail() && idle()) pageFlip.turnToPage(0);
+      pageFlip.flip(t);
+      setTimeout(update, 1300);                         // phòng khi thư viện bỏ qua lệnh (đang lật dở)
+    }
+
+    track.addEventListener("pointerdown", e => {
+      if (!pageFlip || (e.pointerType === "mouse" && e.button !== 0)) return;
+      e.preventDefault();
+      dragging = true;
+      el.classList.add("drag");
+      try { track.setPointerCapture(e.pointerId); } catch (_) {}
+      const k = kAt(e.clientX); paint(k); showTip(k);
+    });
+    track.addEventListener("pointermove", e => {
+      if (!pageFlip) return;
+      const k = kAt(e.clientX);
+      if (dragging) { paint(k); showTip(k); }
+      else if (e.pointerType === "mouse") showTip(k);
+    });
+    track.addEventListener("pointerup", e => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove("drag");
+      if (e.pointerType !== "mouse") hideTip();
+      go(kAt(e.clientX));
+    });
+    track.addEventListener("pointercancel", () => { dragging = false; el.classList.remove("drag"); hideTip(); update(); });
+    track.addEventListener("pointerleave", () => { if (!dragging) hideTip(); });
+
+    function update() {
+      if (!pageFlip || dragging) return;
+      const idx = idxNow(), k = stopOf(idx), text = labelFor(idx);
+      paint(k);
+      setLabel(text);
+      track.setAttribute("aria-valuenow", String(k));
+      track.setAttribute("aria-valuetext", text);
+    }
+    return { rebuild, update };
+  })();
+
   function updateUI() {
     if (!pageFlip) return;
     const idx = idxNow();
-    let label;
-    if (isContent(idx)) {
-      const c = toContent(idx);
-      label = (!single && c < N) ? `${c}–${c + 1} / ${N}` : `${c} / ${N}`;
-    } else {
-      label = (single && idx === N + 1) ? "Bìa sau" : "Bìa";
-    }
-    $$(".pageInfo").forEach(el => el.textContent = label);
+    Prog.update();
     history.replaceState(null, "", isContent(idx) ? "#" + toContent(idx) : location.pathname);
   }
 
@@ -418,15 +791,7 @@ function start(N, firstPage, endOk) {
     if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); next(); }
     if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
     if (e.key === "Home") pageFlip.flip(0);
-    if (e.key === "End") pageFlip.flip(toIndex(N));
-  });
-  $$(".pageInput").forEach(inp => {
-    inp.max = N;
-    inp.addEventListener("change", e => {
-      const n = Math.min(Math.max(parseInt(e.target.value, 10) || 0, 0), N);
-      pageFlip.flip(n === 0 ? 0 : toIndex(n));
-      e.target.value = ""; e.target.blur();
-    });
+    if (e.key === "End") pageFlip.flip(toIndex(C));
   });
   $("fsBtn").onclick = () => {
     const el = document.documentElement;
@@ -436,7 +801,7 @@ function start(N, firstPage, endOk) {
 
   // Link ...#12 → mở thẳng trang 12
   const sp = parseInt(location.hash.slice(1), 10);
-  build(measure(), sp >= 1 && sp <= N ? sp : 0);
+  build(measure(), sp >= 1 ? sp : 0);
 }
 </script>
 </body>
