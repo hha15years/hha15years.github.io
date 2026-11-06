@@ -17,6 +17,8 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
+  /* Không cho chạm hai lần để phóng to (vẫn giữ chạm/vuốt bình thường) */
+  html, body, button, #mbar, #info { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
     background: radial-gradient(ellipse at center, #3d352c 0%, var(--bg) 70%);
     color: var(--text);
@@ -399,6 +401,31 @@ function fitBox(r, single) {
   return { w: Math.floor(w), h: Math.floor(h) };
 }
 
+/* ================= CHẶN PHÓNG TO =================
+   iPhone bỏ qua user-scalable=no, nên chặn thêm bằng JS:
+   - chụm hai ngón (gesture*, touchmove nhiều ngón)
+   - chạm hai lần nhanh: huỷ thao tác phóng to, nhưng nếu chạm vào nút thì vẫn tính là một lần bấm
+   - máy tính: Ctrl + lăn chuột / chụm touchpad, Ctrl + / Ctrl - / Ctrl 0 */
+(() => {
+  const stop = e => e.preventDefault();
+  ["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, stop, { passive: false }));
+  document.addEventListener("touchmove", e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastEnd = 0;
+  document.addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastEnd < 350 && e.touches.length === 0 && e.cancelable) {
+      e.preventDefault();
+      const btn = e.target.closest && e.target.closest("button");
+      if (btn && !btn.disabled) btn.click();
+    }
+    lastEnd = now;
+  }, { passive: false });
+  window.addEventListener("wheel", e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && ["+", "-", "=", "_", "0"].includes(e.key)) e.preventDefault();
+  });
+})();
+
 /* ================= TRÁI TIM BAY LÊN ================= */
 const Hearts = (() => {
   const H = CONFIG.hearts || {};
@@ -660,8 +687,10 @@ function start(N, firstPage, endOk, afterOk) {
   function labelFor(idx) {
     if (!isContent(idx)) return (single && idx === C + 1) ? "Bìa sau" : "Bìa";
     const c = toContent(idx);
-    const nums = (single ? [c] : [c, c + 1]).filter(k => k <= N && k <= C);
-    return nums.length ? `${nums.join("–")} / ${N}` : CONFIG.afterLabel;
+    const seen = (single ? [c] : [c, c + 1]).filter(k => k <= C);
+    const nums = seen.filter(k => k <= N);
+    if (!nums.length) return CONFIG.afterLabel;
+    return `${nums.join("–")} / ${N}` + (seen.length > nums.length ? ` · ${CONFIG.afterLabel}` : "");
   }
 
   /* ---- Thanh tiến trình "khám phá" ---- */
